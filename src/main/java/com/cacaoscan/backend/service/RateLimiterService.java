@@ -50,10 +50,8 @@ public class RateLimiterService {
             attempts = 1L;
         }
 
-        // Si es el primer intento fallido, establecer el TTL
-        if (attempts == 1L) {
-            redisTemplate.expire(attemptsKey, ATTEMPTS_TTL_MINUTES, TimeUnit.MINUTES);
-        }
+        // Establecer o renovar el TTL del contador de intentos
+        redisTemplate.expire(attemptsKey, ATTEMPTS_TTL_MINUTES, TimeUnit.MINUTES);
 
         // Si se supera el número máximo de intentos, bloquear
         if (attempts >= MAX_ATTEMPTS) {
@@ -67,6 +65,9 @@ public class RateLimiterService {
             }
 
             redisTemplate.opsForValue().set(blockedKey, "true", blockTimeSeconds, TimeUnit.SECONDS);
+            
+            // Sincronizar el TTL de los intentos para que no expire durante el bloqueo, añadiendo la ventana estándar
+            redisTemplate.expire(attemptsKey, blockTimeSeconds + (ATTEMPTS_TTL_MINUTES * 60), TimeUnit.SECONDS);
         }
     }
 

@@ -80,7 +80,7 @@ public class AuthService {
             rateLimiterService.resetAttempts(email, ip);
 
             // 4. Obtener usuario de la base de datos
-            Usuario usuario = usuarioRepository.findByEmailOrTelefono(email, email)
+            Usuario usuario = usuarioRepository.findByEmail(authentication.getName())
                     .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
 
             // 5. Generar Access Token
@@ -97,10 +97,10 @@ public class AuthService {
             RefreshToken refreshToken = new RefreshToken();
             refreshToken.setUsuario(usuario);
             refreshToken.setTokenHash(tokenHash);
-            refreshToken.setExpiryDate(LocalDateTime.now().plusWeeks(4)); // 4 semanas (~28 días)
+            refreshToken.setExpiryDate(LocalDateTime.now().plus(jwtRefreshExpirationMs, java.time.temporal.ChronoUnit.MILLIS));
             refreshTokenRepository.save(refreshToken);
 
-            UserDto userDto = new UserDto(usuario.getId(), usuario.getNombre(), usuario.getEmail(), usuario.getRol());
+            UserDto userDto = new UserDto(usuario.getId(), usuario.getNombre(), usuario.getEmail(), usuario.getRol(), usuario.getTelefono(), usuario.getDepartamento(), usuario.getMunicipio(), usuario.getNombreFinca());
             return new LoginResponse(accessToken, rawRefreshToken, userDto);
 
         } catch (AuthenticationException e) {
@@ -145,10 +145,10 @@ public class AuthService {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUsuario(usuario);
         refreshToken.setTokenHash(tokenHash);
-        refreshToken.setExpiryDate(LocalDateTime.now().plusWeeks(4));
+        refreshToken.setExpiryDate(LocalDateTime.now().plus(jwtRefreshExpirationMs, java.time.temporal.ChronoUnit.MILLIS));
         refreshTokenRepository.save(refreshToken);
 
-        UserDto userDto = new UserDto(usuario.getId(), usuario.getNombre(), usuario.getEmail(), usuario.getRol());
+        UserDto userDto = new UserDto(usuario.getId(), usuario.getNombre(), usuario.getEmail(), usuario.getRol(), usuario.getTelefono(), usuario.getDepartamento(), usuario.getMunicipio(), usuario.getNombreFinca());
         return new RegisterResponse(accessToken, rawRefreshToken, userDto);
     }
 
@@ -183,7 +183,7 @@ public class AuthService {
         RefreshToken newRefreshToken = new RefreshToken();
         newRefreshToken.setUsuario(usuario);
         newRefreshToken.setTokenHash(newHash);
-        newRefreshToken.setExpiryDate(LocalDateTime.now().plusWeeks(4));
+        newRefreshToken.setExpiryDate(LocalDateTime.now().plus(jwtRefreshExpirationMs, java.time.temporal.ChronoUnit.MILLIS));
         refreshTokenRepository.save(newRefreshToken);
 
         return new RefreshTokenResponse(newAccessToken, newRawRefreshToken);

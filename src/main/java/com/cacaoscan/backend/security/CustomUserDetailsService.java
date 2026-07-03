@@ -27,7 +27,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el correo o teléfono: " + usernameOrIdentifier));
 
         if (!usuario.isActivo()) {
-            throw new RuntimeException("El usuario está deshabilitado");
+            throw new org.springframework.security.authentication.DisabledException("El usuario está deshabilitado");
         }
 
         return new User(
