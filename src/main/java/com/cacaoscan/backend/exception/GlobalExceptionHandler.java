@@ -19,6 +19,14 @@ public class GlobalExceptionHandler {
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "recurso_no_encontrado");
+        body.put("mensaje", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
@@ -86,7 +94,8 @@ public class GlobalExceptionHandler {
         logger.error("Error no controlado detectado en el servidor: ", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("error", "error_interno_del_servidor");
-        body.put("detalles", "Ocurrió un error inesperado en el servidor.");
+        body.put("detalles", ex.getMessage() != null ? ex.getMessage() : "Error desconocido en el servidor");
+        body.put("tipo", ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
