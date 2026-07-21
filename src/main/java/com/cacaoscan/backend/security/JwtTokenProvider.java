@@ -55,6 +55,24 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
+    /**
+     * Devuelve los milisegundos restantes antes de que expire el token.
+     */
+    public long getExpirationRemainingMs(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            long expirationMs = claims.getExpiration().getTime();
+            long nowMs = System.currentTimeMillis();
+            return Math.max(0, expirationMs - nowMs);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public boolean validateToken(String authToken) {
         try {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(authToken);

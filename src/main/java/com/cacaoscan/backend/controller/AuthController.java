@@ -85,6 +85,23 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "Cerrar Sesión", description = "Invalida el refresh token en PostgreSQL y añade el access token a la blacklist de Redis")
+    @ApiResponse(responseCode = "200", description = "Sesión cerrada exitosamente")
+    public ResponseEntity<Map<String, String>> logout(@Valid @RequestBody LogoutRequest logoutRequest,
+                                                       HttpServletRequest request) {
+        // Extraer el access token del header Authorization
+        String authHeader = request.getHeader("Authorization");
+        String accessToken = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7);
+        }
+        authService.logout(logoutRequest.getRefreshToken(), accessToken);
+        Map<String, String> response = new HashMap<>();
+        response.put("mensaje", "Sesión cerrada");
+        return ResponseEntity.ok(response);
+    }
+
     private String getClientIp(HttpServletRequest request) {
         String xfHeader = request.getHeader("X-Forwarded-For");
         if (xfHeader == null) {

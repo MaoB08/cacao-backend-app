@@ -43,6 +43,15 @@ public class Usuario {
     @Column(name = "email_verificado", nullable = false)
     private boolean emailVerificado = false;
 
+    @Column(name = "foto_perfil_url", length = 500)
+    private String fotoPerfilUrl;
+
+    @Column(precision = 8, scale = 2)
+    private java.math.BigDecimal hectareas;
+
+    @Column(name = "notificaciones_activas", nullable = false)
+    private boolean notificacionesActivas = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -163,5 +172,29 @@ public class Usuario {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getFotoPerfilUrl() {
+        return fotoPerfilUrl;
+    }
+
+    public void setFotoPerfilUrl(String fotoPerfilUrl) {
+        this.fotoPerfilUrl = fotoPerfilUrl;
+    }
+
+    public java.math.BigDecimal getHectareas() {
+        return hectareas;
+    }
+
+    public void setHectareas(java.math.BigDecimal hectareas) {
+        this.hectareas = hectareas;
+    }
+
+    public boolean isNotificacionesActivas() {
+        return notificacionesActivas;
+    }
+
+    public void setNotificacionesActivas(boolean notificacionesActivas) {
+        this.notificacionesActivas = notificacionesActivas;
     }
 }

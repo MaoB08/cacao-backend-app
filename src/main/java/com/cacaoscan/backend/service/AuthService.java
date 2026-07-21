@@ -23,6 +23,9 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Service
 public class AuthService {
@@ -35,6 +38,9 @@ public class AuthService {
     private final RateLimiterService rateLimiterService;
     private final RecoveryTokenService recoveryTokenService;
     private final EmailService emailService;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
 
     @Value("${app.jwt.refreshExpirationMs}")
     private long jwtRefreshExpirationMs;
@@ -46,7 +52,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        RateLimiterService rateLimiterService,
                        RecoveryTokenService recoveryTokenService,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       StringRedisTemplate redisTemplate) {
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -55,6 +62,7 @@ public class AuthService {
         this.rateLimiterService = rateLimiterService;
         this.recoveryTokenService = recoveryTokenService;
         this.emailService = emailService;
+        this.redisTemplate = redisTemplate;
     }
 
     /**
@@ -233,6 +241,37 @@ public class AuthService {
     }
 
     /**
+     * Cierra la sesión del usuario: invalida refresh token en DB y blacklists access token en Redis.
+     */
+    @Transactional
+    public void logout(String rawRefreshToken, String accessToken) {
+        // 1. Invalidar el refresh token en PostgreSQL
+        String hash = sha256(rawRefreshToken);
+        refreshTokenRepository.findByTokenHash(hash).ifPresent(refreshTokenRepository::delete);
+
+        // 2. Blacklist del access token en Redis con TTL = tiempo restante
+        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            long remainingMs = jwtTokenProvider.getExpirationRemainingMs(accessToken);
+            if (remainingMs > 0) {
+                redisTemplate.opsForValue().set(
+                        BLACKLIST_PREFIX + accessToken,
+                        "true",
+                        remainingMs,
+                        TimeUnit.MILLISECONDS
+                );
+            }
+        }
+    }
+
+    /**
+     * Verifica si un access token está en la blacklist de Redis.
+     */
+    public boolean isTokenBlacklisted(String token) {
+        Boolean exists = redisTemplate.hasKey(BLACKLIST_PREFIX + token);
+        return exists != null && exists;
+    }
+
+    /**
      * Función utilitaria para hashear tokens de forma segura con SHA-256.
      */
     private String sha256(String value) {
@@ -251,3 +290,4 @@ public class AuthService {
         }
     }
 }
+

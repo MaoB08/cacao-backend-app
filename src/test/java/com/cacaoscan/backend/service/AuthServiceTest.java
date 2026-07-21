@@ -39,6 +39,7 @@ public class AuthServiceTest {
     @Mock private RateLimiterService rateLimiterService;
     @Mock private RecoveryTokenService recoveryTokenService;
     @Mock private EmailService emailService;
+    @Mock private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @InjectMocks
     private AuthService authService;
@@ -66,9 +67,10 @@ public class AuthServiceTest {
         request.setPassword(password);
 
         Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn(email);
         when(rateLimiterService.isBlocked(email, ip)).thenReturn(false);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
-        when(usuarioRepository.findByEmailOrTelefono(email, email)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(usuario));
         when(jwtTokenProvider.generateAccessToken(auth)).thenReturn("access_token");
 
         LoginResponse response = authService.login(request, ip);

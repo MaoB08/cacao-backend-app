@@ -72,6 +72,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(com.cacaoscan.backend.service.ExpertoService.ExpertoNoDisponibleException.class)
+    public ResponseEntity<Map<String, Object>> handleExpertoNoDisponible(
+            com.cacaoscan.backend.service.ExpertoService.ExpertoNoDisponibleException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "experto_no_disponible");
+        body.put("tiempoEspera", ex.getTiempoEspera());
+        return ResponseEntity.status(HttpStatus.LOCKED).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         logger.error("Error no controlado detectado en el servidor: ", ex);
