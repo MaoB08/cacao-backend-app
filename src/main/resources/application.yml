@@ -37,11 +37,19 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
 app:
   jwt:
     secret: ${JWT_SECRET:9a67471b79e1b212356c9a3d4f828a2a89047fd20c9aa1b3c9f28d8b8e01de11}
     accessExpirationMs: ${JWT_ACCESS_EXPIRATION_MS:900000}
     refreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
+  uploads:
+    dir: ${UPLOADS_DIR:uploads}
+  base-url: ${APP_BASE_URL:http://localhost:8080}
 
 springdoc:
   api-docs:
@@ -49,3 +57,4 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: method
+
