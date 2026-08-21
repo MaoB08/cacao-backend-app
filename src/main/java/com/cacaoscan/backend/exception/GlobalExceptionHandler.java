@@ -27,6 +27,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    @ExceptionHandler(InvalidPolygonException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidPolygon(InvalidPolygonException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "poligono_invalido");
+        body.put("mensaje", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
