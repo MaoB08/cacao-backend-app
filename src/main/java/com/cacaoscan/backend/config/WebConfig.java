@@ -14,7 +14,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Servir archivos de uploads como recursos estáticos
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadsDir + "/");
+        registry.addResourceHandler("/uploads/perfil/**")
+                .addResourceLocations("file:" + uploadsDir + "/perfil/");
     }
 }

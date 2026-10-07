@@ -11,12 +11,17 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Set;
 import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
+    private static final Set<String> KNOWN_EXPOSED_SECRETS = Set.of(
+            "cacaoscan_super_secret_jwt_key_that_is_at_least_256_bits_long_for_hmac_sha256",
+            "9a67471b79e1b212356c9a3d4f828a2a89047fd20c9aa1b3c9f28d8b8e01de11"
+    );
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
@@ -29,8 +34,8 @@ public class JwtTokenProvider {
         if (jwtSecret == null || jwtSecret.isBlank()) {
             throw new IllegalStateException("ERROR DE SEGURIDAD: La variable app.jwt.secret (JWT_SECRET) debe estar configurada en el entorno.");
         }
-        if (jwtSecret.contains("9a67471b79e1b212356c9a3d4f828a2a89047fd20c9aa1b3c9f28d8b8e01de11")) {
-            logger.warn("⚠️ ALERTA DE SEGURIDAD: Estás usando la firma JWT por defecto. En producción DEBES generar un JWT_SECRET único.");
+        if (KNOWN_EXPOSED_SECRETS.contains(jwtSecret)) {
+            throw new IllegalStateException("ERROR DE SEGURIDAD: JWT_SECRET coincide con una clave de ejemplo expuesta; genera una clave nueva.");
         }
         byte[] bytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {

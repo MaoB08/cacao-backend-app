@@ -109,7 +109,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "recurso_no_encontrado");
-        body.put("mensaje", ex.getMessage());
+        body.put("mensaje", "El recurso solicitado no existe");
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
@@ -118,8 +118,7 @@ public class GlobalExceptionHandler {
         logger.error("Error no controlado detectado en el servidor: ", ex);
         Map<String, Object> body = new HashMap<>();
         body.put("error", "error_interno_del_servidor");
-        body.put("detalles", ex.getMessage() != null ? ex.getMessage() : "Error desconocido en el servidor");
-        body.put("tipo", ex.getClass().getSimpleName());
+        body.put("mensaje", "Ocurrió un error inesperado. Intenta nuevamente.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

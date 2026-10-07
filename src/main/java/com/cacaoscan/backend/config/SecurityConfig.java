@@ -19,10 +19,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @org.springframework.beans.factory.annotation.Value("${app.security.allowed-origins:http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006}")
+    private List<String> allowedOrigins;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -43,7 +47,7 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
-                    "/uploads/**"
+                    "/uploads/perfil/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             );
@@ -66,11 +70,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
         configuration.setExposedHeaders(Collections.singletonList("x-auth-token"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

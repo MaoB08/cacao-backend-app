@@ -11,7 +11,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -44,9 +44,11 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:cacaoscan_super_secret_jwt_key_that_is_at_least_256_bits_long_for_hmac_sha256}
+    secret: ${JWT_SECRET:}
     accessExpirationMs: ${JWT_ACCESS_EXPIRATION_MS:900000}
     refreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
+  security:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006}
   uploads:
     dir: ${UPLOADS_DIR:uploads}
   base-url: ${APP_BASE_URL:http://localhost:8080}
@@ -57,4 +59,3 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: method
-

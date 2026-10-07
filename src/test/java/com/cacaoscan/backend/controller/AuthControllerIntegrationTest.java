@@ -1,12 +1,13 @@
 package com.cacaoscan.backend.controller;
 
 import com.cacaoscan.backend.dto.*;
+import com.cacaoscan.backend.security.JwtAuthenticationFilter;
 import com.cacaoscan.backend.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,8 +23,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class AuthControllerIntegrationTest {
 
     @Autowired
@@ -34,6 +35,9 @@ public class AuthControllerIntegrationTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Test
     public void testLogin_Success() throws Exception {

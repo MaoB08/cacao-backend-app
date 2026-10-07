@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 
@@ -108,7 +107,19 @@ public class PerfilService {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("archivo_muy_grande");
         }
-        if (file.getContentType() == null || !ALLOWED_TYPES.contains(file.getContentType())) {
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("tipo_archivo_no_permitido");
+        }
+
+        byte[] imageBytes;
+        try {
+            imageBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("archivo_invalido");
+        }
+        String detectedType = detectImageType(imageBytes);
+        if (!contentType.equals(detectedType)) {
             throw new IllegalArgumentException("tipo_archivo_no_permitido");
         }
 
@@ -137,7 +148,7 @@ public class PerfilService {
             Path filePath = uploadPath.resolve(fileName);
 
             // Guardar archivo
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.write(filePath, imageBytes);
 
             // Actualizar URL en la base de datos
             String fotoUrl = baseUrl + "/uploads/perfil/" + fileName;
@@ -154,5 +165,24 @@ public class PerfilService {
         if ("image/png".equalsIgnoreCase(contentType)) return ".png";
         if ("image/webp".equalsIgnoreCase(contentType)) return ".webp";
         return ".jpg";
+    }
+
+    private String detectImageType(byte[] bytes) {
+        if (bytes.length >= 3 && (bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8 && (bytes[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        if (bytes.length >= 8
+                && (bytes[0] & 0xFF) == 0x89
+                && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G'
+                && (bytes[4] & 0xFF) == 0x0D && (bytes[5] & 0xFF) == 0x0A
+                && (bytes[6] & 0xFF) == 0x1A && (bytes[7] & 0xFF) == 0x0A) {
+            return "image/png";
+        }
+        if (bytes.length >= 12
+                && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
+            return "image/webp";
+        }
+        return null;
     }
 }

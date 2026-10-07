@@ -3,11 +3,11 @@ services:
     image: postgis/postgis:15-3.4-alpine
     container_name: cacaoscan-postgres
     environment:
-      POSTGRES_USER: cacaouser
-      POSTGRES_PASSWORD: cacaopassword
-      POSTGRES_DB: cacaodb
+      POSTGRES_USER: ${DB_USER:-cacaouser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cacaopassword}
+      POSTGRES_DB: ${DB_NAME:-cacaodb}
     ports:
-      - "5433:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: always
@@ -16,15 +16,15 @@ services:
     image: redis:7-alpine
     container_name: cacaoscan-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     restart: always
 
   maildev:
     image: maildev/maildev:latest
     container_name: cacaoscan-maildev
     ports:
-      - "1080:1080" # Web UI
-      - "1025:1025" # SMTP Port
+      - "${MAILDEV_WEB_PORT:-1080}:1080" # Web UI
+      - "${SMTP_PORT:-1025}:1025" # SMTP Port
     restart: always
 
 volumes:
