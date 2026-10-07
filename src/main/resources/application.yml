@@ -15,7 +15,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
 
   data:
     redis:
@@ -45,7 +44,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:9a67471b79e1b212356c9a3d4f828a2a89047fd20c9aa1b3c9f28d8b8e01de11}
+    secret: ${JWT_SECRET:cacaoscan_super_secret_jwt_key_that_is_at_least_256_bits_long_for_hmac_sha256}
     accessExpirationMs: ${JWT_ACCESS_EXPIRATION_MS:900000}
     refreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   uploads:

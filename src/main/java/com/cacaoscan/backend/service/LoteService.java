@@ -62,7 +62,7 @@ public class LoteService {
      */
     @Transactional
     public LoteDetalleResponse crearLote(CrearLoteRequest request, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         Finca finca = fincaRepository.findById(request.getFincaId())
@@ -126,7 +126,7 @@ public class LoteService {
      */
     @Transactional(readOnly = true)
     public List<LoteMapaResponse> obtenerLotesMapa(String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         List<Lote> lotes = loteRepository.findAllByUsuarioId(usuario.getId());
@@ -217,7 +217,7 @@ public class LoteService {
      */
     private Polygon construirPoligono(List<CoordenadaDTO> coordenadas) {
         if (coordenadas == null || coordenadas.size() < 3) {
-            throw new InvalidPolygonException("Se necesitan al menos 3 coordenadas para formar un polígono");
+            throw new InvalidPolygonException("Necesitamos al menos 3 puntos marcados para poder medir tu lote. Camina un poco más.");
         }
 
         // Construir array de coordenadas JTS (nota: JTS usa [lon, lat], no [lat, lon])
@@ -234,7 +234,7 @@ public class LoteService {
 
         // Asegurar mínimo de 4 puntos (3 vértices + cierre)
         if (jtsCoords.size() < 4) {
-            throw new InvalidPolygonException("El polígono necesita al menos 3 vértices distintos");
+            throw new InvalidPolygonException("El lote debe tener al menos 3 esquinas o marcas distintas. Sigue caminando.");
         }
 
         try {
@@ -250,8 +250,8 @@ public class LoteService {
                     logger.warn("Polígono reparado automáticamente mediante buffer(0)");
                 } else {
                     throw new InvalidPolygonException(
-                            "El polígono formado por las coordenadas GPS es inválido (posible autocruzamiento). " +
-                            "Intenta recorrer el lote nuevamente de forma más uniforme."
+                            "El recorrido no quedó bien (es posible que te hayas cruzado en el camino). " +
+                            "Intenta dar la vuelta a tu lote de forma más uniforme sin cruzarte."
                     );
                 }
             }
@@ -260,7 +260,7 @@ public class LoteService {
             return polygon;
 
         } catch (IllegalArgumentException e) {
-            throw new InvalidPolygonException("Error al construir el polígono: " + e.getMessage());
+            throw new InvalidPolygonException("No pudimos dibujar el lote: " + e.getMessage());
         }
     }
 
@@ -339,7 +339,9 @@ public class LoteService {
     }
 
     private void recalcularAreaFinca(Finca finca) {
-        BigDecimal areaTotal = finca.getLotes().stream()
+        // Usar query fresca de la BD para evitar datos stale en memoria tras delete
+        List<Lote> lotesActuales = loteRepository.findByFincaOrderByCreatedAtDesc(finca);
+        BigDecimal areaTotal = lotesActuales.stream()
                 .filter(l -> l.getAreaHectareas() != null)
                 .map(Lote::getAreaHectareas)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -348,7 +350,9 @@ public class LoteService {
     }
 
     private void validarPropietario(Lote lote, String userEmail) {
-        if (!lote.getFinca().getUsuario().getEmail().equals(userEmail)) {
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (!lote.getFinca().getUsuario().getId().equals(usuario.getId())) {
             throw new IllegalArgumentException("No tienes permisos sobre este lote");
         }
     }

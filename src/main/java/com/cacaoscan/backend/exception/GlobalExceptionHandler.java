@@ -81,7 +81,7 @@ public class GlobalExceptionHandler {
         String message = ex.getMessage();
         body.put("error", message);
 
-        if ("email_ya_registrado".equals(message)) {
+        if ("email_ya_registrado".equals(message) || "telefono_ya_registrado".equals(message)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
         
@@ -95,6 +95,22 @@ public class GlobalExceptionHandler {
         body.put("error", "experto_no_disponible");
         body.put("tiempoEspera", ex.getTiempoEspera());
         return ResponseEntity.status(HttpStatus.LOCKED).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(org.springframework.web.server.ResponseStatusException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString());
+        body.put("mensaje", ex.getReason());
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "recurso_no_encontrado");
+        body.put("mensaje", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     @ExceptionHandler(Exception.class)

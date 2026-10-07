@@ -12,4 +12,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     Optional<Usuario> findByEmail(String email);
     Optional<Usuario> findByEmailOrTelefono(String email, String telefono);
     boolean existsByEmail(String email);
+    boolean existsByTelefono(String telefono);
+
+    default Optional<Usuario> findByIdentificador(String identificador) {
+        if (identificador == null || identificador.isBlank()) {
+            return Optional.empty();
+        }
+        String clean = identificador.trim();
+        return findByEmailOrTelefono(clean.toLowerCase(), clean);
+    }
 }

@@ -30,7 +30,7 @@ public class VentaCacaoService {
 
     @Transactional
     public VentaCacaoResponse registrarVenta(String email, VentaCacaoRequest request) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         VentaCacao venta = new VentaCacao();
@@ -47,7 +47,7 @@ public class VentaCacaoService {
 
     @Transactional(readOnly = true)
     public List<VentaCacaoResponse> obtenerVentasUsuario(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         return ventaCacaoRepository.findByUsuarioIdOrderByFechaDesc(usuario.getId())
@@ -58,7 +58,7 @@ public class VentaCacaoService {
 
     @Transactional
     public void eliminarVenta(String email, UUID ventaId) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         VentaCacao venta = ventaCacaoRepository.findByIdAndUsuarioId(ventaId, usuario.getId())
@@ -69,7 +69,7 @@ public class VentaCacaoService {
 
     @Transactional
     public void eliminarTodasVentas(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         ventaCacaoRepository.deleteByUsuarioId(usuario.getId());

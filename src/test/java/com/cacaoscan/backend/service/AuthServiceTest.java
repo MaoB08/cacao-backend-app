@@ -6,6 +6,7 @@ import com.cacaoscan.backend.model.Usuario;
 import com.cacaoscan.backend.model.RefreshToken;
 import com.cacaoscan.backend.repository.UsuarioRepository;
 import com.cacaoscan.backend.repository.RefreshTokenRepository;
+import com.cacaoscan.backend.repository.FincaRepository;
 import com.cacaoscan.backend.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ public class AuthServiceTest {
 
     @Mock private AuthenticationManager authenticationManager;
     @Mock private UsuarioRepository usuarioRepository;
+    @Mock private FincaRepository fincaRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private PasswordEncoder passwordEncoder;
@@ -70,7 +72,7 @@ public class AuthServiceTest {
         when(auth.getName()).thenReturn(email);
         when(rateLimiterService.isBlocked(email, ip)).thenReturn(false);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
-        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailOrTelefono(email, email)).thenReturn(Optional.of(usuario));
         when(jwtTokenProvider.generateAccessToken(auth)).thenReturn("access_token");
 
         LoginResponse response = authService.login(request, ip);
@@ -128,6 +130,7 @@ public class AuthServiceTest {
         assertNotNull(response);
         assertEquals("access_token", response.getAccessToken());
         verify(usuarioRepository).save(any(Usuario.class));
+        verify(fincaRepository).save(any());
         verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 

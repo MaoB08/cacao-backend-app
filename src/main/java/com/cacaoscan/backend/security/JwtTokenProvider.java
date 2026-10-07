@@ -24,6 +24,20 @@ public class JwtTokenProvider {
     @Value("${app.jwt.accessExpirationMs}")
     private long jwtAccessExpirationMs;
 
+    @jakarta.annotation.PostConstruct
+    public void validateSecret() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("ERROR DE SEGURIDAD: La variable app.jwt.secret (JWT_SECRET) debe estar configurada en el entorno.");
+        }
+        if (jwtSecret.contains("9a67471b79e1b212356c9a3d4f828a2a89047fd20c9aa1b3c9f28d8b8e01de11")) {
+            logger.warn("⚠️ ALERTA DE SEGURIDAD: Estás usando la firma JWT por defecto. En producción DEBES generar un JWT_SECRET único.");
+        }
+        byte[] bytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException("ERROR DE SEGURIDAD: La clave JWT_SECRET debe tener al menos 32 caracteres (256 bits) de longitud.");
+        }
+    }
+
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }

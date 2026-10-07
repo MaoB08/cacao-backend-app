@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public class DiagnosticoService {
     }
 
     /**
-     * Procesa la imagen a través del pipeline de la Red Neuronal de CacaoCare.
+     * Procesa la imagen a través del pipeline de la Red Neuronal de CultivIA.
      * Genera un diagnóstico agronómico de precisión con confianza, severidad y recomendaciones de acción.
      */
     public DiagnosticoResponse procesarAnalisisIA(AnalisisRequest request, String userEmail) {
@@ -85,8 +86,9 @@ public class DiagnosticoService {
     /**
      * Guarda el diagnóstico en la base de datos de la finca.
      */
+    @Transactional
     public DiagnosticoResponse guardarDiagnostico(DiagnosticoResponse dto, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         Diagnostico entity = new Diagnostico();
@@ -111,8 +113,9 @@ public class DiagnosticoService {
     /**
      * Obtiene los diagnósticos del agricultor autenticado.
      */
+    @Transactional(readOnly = true)
     public List<DiagnosticoResponse> obtenerHistorialUsuario(String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         return diagnosticoRepository.findByUsuarioOrderByCreatedAtDesc(usuario)

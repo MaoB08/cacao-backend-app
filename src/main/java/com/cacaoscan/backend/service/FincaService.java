@@ -27,7 +27,7 @@ public class FincaService {
 
     @Transactional
     public FincaResponse crearFinca(CrearFincaRequest request, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (fincaRepository.existsByUsuarioAndNombreIgnoreCase(usuario, request.getNombre())) {
@@ -48,7 +48,7 @@ public class FincaService {
 
     @Transactional(readOnly = true)
     public List<FincaResponse> listarFincas(String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         return fincaRepository.findByUsuarioAndActivaTrueOrderByCreatedAtDesc(usuario)
@@ -112,7 +112,9 @@ public class FincaService {
     }
 
     private void validarPropietario(Finca finca, String userEmail) {
-        if (!finca.getUsuario().getEmail().equals(userEmail)) {
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (!finca.getUsuario().getId().equals(usuario.getId())) {
             throw new IllegalArgumentException("No tienes permisos sobre esta finca");
         }
     }

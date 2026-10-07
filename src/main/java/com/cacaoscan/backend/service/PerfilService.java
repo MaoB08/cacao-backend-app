@@ -39,7 +39,7 @@ public class PerfilService {
      * Obtiene el perfil completo del usuario autenticado.
      */
     public PerfilResponse getPerfil(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new IllegalArgumentException("usuario_no_encontrado"));
 
         PerfilResponse response = new PerfilResponse();
@@ -73,7 +73,7 @@ public class PerfilService {
      */
     @Transactional
     public PerfilResponse updatePerfil(String email, PerfilUpdateRequest request) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new IllegalArgumentException("usuario_no_encontrado"));
 
         if (request.getNombre() != null) {
@@ -112,7 +112,7 @@ public class PerfilService {
             throw new IllegalArgumentException("tipo_archivo_no_permitido");
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new IllegalArgumentException("usuario_no_encontrado"));
 
         try {
@@ -120,9 +120,20 @@ public class PerfilService {
             Path uploadPath = Paths.get(uploadsDir, "perfil");
             Files.createDirectories(uploadPath);
 
-            // Generar nombre único para el archivo
-            String extension = getFileExtension(file.getOriginalFilename());
-            String fileName = usuario.getId().toString() + extension;
+            // Eliminar fotos previas del usuario si existen
+            String userPrefix = usuario.getId().toString();
+            try (var stream = Files.list(uploadPath)) {
+                stream.filter(p -> p.getFileName().toString().startsWith(userPrefix))
+                      .forEach(p -> {
+                          try {
+                              Files.deleteIfExists(p);
+                          } catch (IOException ignored) {}
+                      });
+            }
+
+            // Generar nombre seguro para el archivo basado en MIME type
+            String extension = getSafeExtension(file.getContentType());
+            String fileName = userPrefix + extension;
             Path filePath = uploadPath.resolve(fileName);
 
             // Guardar archivo
@@ -139,9 +150,9 @@ public class PerfilService {
         }
     }
 
-    private String getFileExtension(String filename) {
-        if (filename == null) return ".jpg";
-        int lastDot = filename.lastIndexOf('.');
-        return lastDot > 0 ? filename.substring(lastDot) : ".jpg";
+    private String getSafeExtension(String contentType) {
+        if ("image/png".equalsIgnoreCase(contentType)) return ".png";
+        if ("image/webp".equalsIgnoreCase(contentType)) return ".webp";
+        return ".jpg";
     }
 }

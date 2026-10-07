@@ -1,12 +1,16 @@
 package com.cacaoscan.backend.service;
 
 import com.cacaoscan.backend.dto.*;
+import com.cacaoscan.backend.model.Finca;
 import com.cacaoscan.backend.model.Rol;
 import com.cacaoscan.backend.model.Usuario;
 import com.cacaoscan.backend.model.RefreshToken;
+import com.cacaoscan.backend.repository.FincaRepository;
 import com.cacaoscan.backend.repository.UsuarioRepository;
 import com.cacaoscan.backend.repository.RefreshTokenRepository;
 import com.cacaoscan.backend.security.JwtTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,9 +34,12 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @Service
 public class AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+
     private final AuthenticationManager authenticationManager;
     private final UsuarioRepository usuarioRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final FincaRepository fincaRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RateLimiterService rateLimiterService;
@@ -48,6 +55,7 @@ public class AuthService {
     public AuthService(AuthenticationManager authenticationManager,
                        UsuarioRepository usuarioRepository,
                        RefreshTokenRepository refreshTokenRepository,
+                       FincaRepository fincaRepository,
                        JwtTokenProvider jwtTokenProvider,
                        PasswordEncoder passwordEncoder,
                        RateLimiterService rateLimiterService,
@@ -57,6 +65,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.fincaRepository = fincaRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.rateLimiterService = rateLimiterService;
@@ -70,25 +79,25 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse login(LoginRequest request, String ip) {
-        String email = request.getEmail().toLowerCase().trim();
+        String identifier = request.getEmail().toLowerCase().trim();
 
         // 1. Verificar si está bloqueado por Rate Limiting
-        if (rateLimiterService.isBlocked(email, ip)) {
-            long retryAfter = rateLimiterService.getBlockedTimeRemaining(email, ip);
+        if (rateLimiterService.isBlocked(identifier, ip)) {
+            long retryAfter = rateLimiterService.getBlockedTimeRemaining(identifier, ip);
             throw new LockedException(String.valueOf(retryAfter));
         }
 
         try {
-            // 2. Autenticar credenciales
+            // 2. Autenticar credenciales (usa el UserDetailsService que busca por email o teléfono)
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
+                    new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
             );
 
             // 3. Si tiene éxito, resetear intentos fallidos
-            rateLimiterService.resetAttempts(email, ip);
+            rateLimiterService.resetAttempts(identifier, ip);
 
-            // 4. Obtener usuario de la base de datos
-            Usuario usuario = usuarioRepository.findByEmail(authentication.getName())
+            // 4. Obtener usuario de la base de datos por email o teléfono
+            Usuario usuario = usuarioRepository.findByEmailOrTelefono(authentication.getName(), authentication.getName())
                     .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
 
             // 5. Generar Access Token
@@ -113,21 +122,35 @@ public class AuthService {
 
         } catch (AuthenticationException e) {
             // 7. Si falla, registrar el intento fallido
-            rateLimiterService.recordFailedAttempt(email, ip);
+            rateLimiterService.recordFailedAttempt(identifier, ip);
             throw new BadCredentialsException("credenciales_invalidas");
         }
     }
 
     /**
      * Registra un nuevo agricultor e inicia sesión automáticamente.
+     * Crea automáticamente una Finca asociada al usuario si proporcionó nombre de finca.
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        String email = request.getEmail().toLowerCase().trim();
+        String email = request.getEmail() != null ? request.getEmail().toLowerCase().trim() : null;
+        if (email != null && email.isBlank()) {
+            email = null;
+        }
 
         // Verificar si el correo ya está registrado
-        if (usuarioRepository.existsByEmail(email)) {
+        if (email != null && usuarioRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("email_ya_registrado");
+        }
+
+        String telefono = request.getTelefono() != null ? request.getTelefono().trim() : null;
+        if (telefono == null || telefono.isBlank()) {
+            throw new IllegalArgumentException("telefono_requerido");
+        }
+
+        // Verificar si el teléfono ya está registrado
+        if (usuarioRepository.existsByTelefono(telefono)) {
+            throw new IllegalArgumentException("telefono_ya_registrado");
         }
 
         // Crear nueva entidad Usuario
@@ -135,7 +158,7 @@ public class AuthService {
         usuario.setNombre(request.getNombre());
         usuario.setEmail(email);
         usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        usuario.setTelefono(request.getTelefono());
+        usuario.setTelefono(telefono);
         usuario.setDepartamento(request.getDepartamento());
         usuario.setMunicipio(request.getMunicipio());
         usuario.setNombreFinca(request.getNombreFinca());
@@ -145,8 +168,25 @@ public class AuthService {
 
         usuario = usuarioRepository.save(usuario);
 
-        // Generar tokens para inicio de sesión automático
-        String accessToken = jwtTokenProvider.generateAccessTokenFromUsername(usuario.getEmail());
+        // Crear automáticamente una Finca para el agricultor
+        String nombreFinca = request.getNombreFinca();
+        if (nombreFinca == null || nombreFinca.isBlank()) {
+            nombreFinca = "Finca de " + request.getNombre();
+        }
+
+        Finca finca = new Finca();
+        finca.setUsuario(usuario);
+        finca.setNombre(nombreFinca);
+        finca.setDepartamento(request.getDepartamento());
+        finca.setMunicipio(request.getMunicipio());
+        finca.setActiva(true);
+        fincaRepository.save(finca);
+
+        logger.info("Finca '{}' creada automáticamente para el agricultor '{}'", nombreFinca, usuario.getNombre());
+
+        // Generar tokens para inicio de sesión automático (usa email o teléfono si no tiene email)
+        String tokenIdentifier = usuario.getEmail() != null ? usuario.getEmail() : usuario.getTelefono();
+        String accessToken = jwtTokenProvider.generateAccessTokenFromUsername(tokenIdentifier);
         String rawRefreshToken = UUID.randomUUID().toString();
         String tokenHash = sha256(rawRefreshToken);
 
@@ -181,7 +221,8 @@ public class AuthService {
         Usuario usuario = refreshToken.getUsuario();
 
         // Generar nuevo Access Token y Refresh Token (Rotación de tokens)
-        String newAccessToken = jwtTokenProvider.generateAccessTokenFromUsername(usuario.getEmail());
+        String tokenIdentifier = usuario.getEmail() != null ? usuario.getEmail() : usuario.getTelefono();
+        String newAccessToken = jwtTokenProvider.generateAccessTokenFromUsername(tokenIdentifier);
         String newRawRefreshToken = UUID.randomUUID().toString();
         String newHash = sha256(newRawRefreshToken);
 

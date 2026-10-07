@@ -68,7 +68,7 @@ public class ExpertoService {
      */
     @Transactional
     public ChatIniciarResponse iniciarChat(String email, UUID expertoId) {
-        Usuario agricultor = usuarioRepository.findByEmail(email)
+        Usuario agricultor = usuarioRepository.findByIdentificador(email)
                 .orElseThrow(() -> new IllegalArgumentException("usuario_no_encontrado"));
 
         Experto experto = expertoRepository.findById(expertoId)

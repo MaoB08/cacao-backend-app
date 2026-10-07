@@ -32,7 +32,7 @@ public class InspeccionService {
 
     @Transactional
     public InspeccionResponse crearInspeccion(CrearInspeccionRequest request, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         Lote lote = loteRepository.findById(request.getLoteId())
@@ -133,7 +133,9 @@ public class InspeccionService {
     }
 
     private void validarAcceso(Lote lote, String userEmail) {
-        if (!lote.getFinca().getUsuario().getEmail().equals(userEmail)) {
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (!lote.getFinca().getUsuario().getId().equals(usuario.getId())) {
             throw new IllegalArgumentException("No tienes permisos sobre este lote");
         }
     }

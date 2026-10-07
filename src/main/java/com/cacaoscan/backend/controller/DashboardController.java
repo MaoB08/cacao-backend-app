@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Endpoints para obtener los datos resumidos del Agricultor y el Experto.
@@ -29,71 +30,72 @@ import java.util.Arrays;
 public class DashboardController {
 
     private final UsuarioRepository usuarioRepository;
+    private final com.cacaoscan.backend.repository.DiagnosticoRepository diagnosticoRepository;
+    private final com.cacaoscan.backend.repository.ChatRepository chatRepository;
 
-    public DashboardController(UsuarioRepository usuarioRepository) {
+    public DashboardController(UsuarioRepository usuarioRepository,
+                               com.cacaoscan.backend.repository.DiagnosticoRepository diagnosticoRepository,
+                               com.cacaoscan.backend.repository.ChatRepository chatRepository) {
         this.usuarioRepository = usuarioRepository;
+        this.diagnosticoRepository = diagnosticoRepository;
+        this.chatRepository = chatRepository;
     }
 
     @GetMapping("/agricultores/dashboard")
     @Operation(summary = "Obtener Dashboard Agricultor", description = "Devuelve el resumen de diagnósticos, alertas y lista reciente del agricultor autenticado")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<AgricultorDashboardResponse> getAgricultorDashboard(Principal principal) {
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
         }
         
-        Usuario usuario = usuarioRepository.findByEmail(principal.getName())
+        Usuario usuario = usuarioRepository.findByIdentificador(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         if (usuario.getRol() != Rol.AGRICULTOR) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rol no permitido");
         }
 
-        // Crear datos de ejemplo realistas
+        // Obtener información de la finca
+        String nombreFinca = usuario.getNombreFinca();
+        if (nombreFinca == null || nombreFinca.isBlank()) {
+            nombreFinca = "Finca de " + usuario.getNombre();
+        }
+
         var agricultorInfo = new AgricultorDashboardResponse.AgricultorInfo(
                 usuario.getNombre(),
-                usuario.getNombreFinca() != null ? usuario.getNombreFinca() : "Finca Piloto"
+                nombreFinca
         );
+
+        // Obtener resumen de diagnósticos reales
+        int totalDiag = (int) diagnosticoRepository.countByUsuarioId(usuario.getId());
+        int alertasActivas = (int) diagnosticoRepository.countAlertasActivasByUsuarioId(usuario.getId());
+        
+        java.util.Optional<com.cacaoscan.backend.model.Diagnostico> ultimoDiagOpt = 
+                diagnosticoRepository.findFirstByUsuarioOrderByCreatedAtDesc(usuario);
+        
+        LocalDate ultimoAnalisis = ultimoDiagOpt.map(d -> d.getCreatedAt().toLocalDate()).orElse(null);
 
         var resumen = new AgricultorDashboardResponse.ResumenInfo(
-                12, // totalDiagnosticos
-                2,  // alertasActivas
-                LocalDate.now().minusDays(1) // ultimoAnalisis
+                totalDiag,
+                alertasActivas,
+                ultimoAnalisis
         );
 
-        var diagnosticos = Arrays.asList(
-                new AgricultorDashboardResponse.DiagnosticoInfo(
-                        "diag-001",
-                        "https://images.unsplash.com/photo-1587132137056-bfbf0166836e?auto=format&fit=crop&q=80&w=200", // Monilia
-                        "Moniliasis del Cacao",
-                        0.94,
-                        "ALTA",
-                        LocalDate.now().minusDays(1)
-                ),
-                new AgricultorDashboardResponse.DiagnosticoInfo(
-                        "diag-002",
-                        "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&q=80&w=200", // Escoba de bruja
-                        "Escoba de Bruja",
-                        0.87,
-                        "MEDIA",
-                        LocalDate.now().minusDays(4)
-                ),
-                new AgricultorDashboardResponse.DiagnosticoInfo(
-                        "diag-003",
-                        "https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&q=80&w=200", // Fitóftora
-                        "Mazorca Negra (Phytophthora)",
-                        0.91,
-                        "ALTA",
-                        LocalDate.now().minusDays(8)
-                ),
-                new AgricultorDashboardResponse.DiagnosticoInfo(
-                        "diag-004",
-                        "https://images.unsplash.com/photo-1601244000763-95770ca1a495?auto=format&fit=crop&q=80&w=200", // Sano
-                        "Hojas y Fruto Saludables",
-                        0.99,
-                        "SALUDABLE",
-                        LocalDate.now().minusDays(12)
-                )
-        );
+        // Obtener diagnósticos recientes reales
+        List<com.cacaoscan.backend.model.Diagnostico> diagnosticosList = 
+                diagnosticoRepository.findTop5ByUsuarioOrderByCreatedAtDesc(usuario);
+
+        List<AgricultorDashboardResponse.DiagnosticoInfo> diagnosticos = diagnosticosList.stream()
+                .map(d -> new AgricultorDashboardResponse.DiagnosticoInfo(
+                        d.getId().toString(),
+                        d.getImagenUrl(),
+                        d.getNombreEnfermedad(),
+                        parseConfianza(d.getConfianza()),
+                        d.getSeveridad(),
+                        d.getCreatedAt().toLocalDate()
+                ))
+                .toList();
 
         var response = new AgricultorDashboardResponse(agricultorInfo, resumen, diagnosticos);
         return ResponseEntity.ok(response);
@@ -101,12 +103,13 @@ public class DashboardController {
 
     @GetMapping("/expertos/dashboard")
     @Operation(summary = "Obtener Dashboard Experto", description = "Devuelve los KPIs y lista de diagnósticos pendientes de validación para el experto autenticado")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<ExpertoDashboardResponse> getExpertoDashboard(Principal principal) {
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(principal.getName())
+        Usuario usuario = usuarioRepository.findByIdentificador(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         if (usuario.getRol() != Rol.EXPERTO) {
@@ -115,48 +118,61 @@ public class DashboardController {
 
         var expertoInfo = new ExpertoDashboardResponse.ExpertoInfo(usuario.getNombre());
 
+        // Consultar agricultores asignados reales (con chats activos)
+        long agricultoresAsignados = chatRepository.countUniqueAgricultoresByExpertoNombre(usuario.getNombre());
+        if (agricultoresAsignados == 0) {
+            // Fallback si no tiene chats asignados
+            agricultoresAsignados = chatRepository.countTotalUniqueAgricultores();
+        }
+
+        // Consultar diagnósticos totales con enfermedad y alertas activas
+        long diagnosticosPendientes = diagnosticoRepository.countByTieneEnfermedadTrue();
+        long alertasActivas = diagnosticoRepository.countAlertasTotales();
+
         var kpis = new ExpertoDashboardResponse.KpiInfo(
-                8,  // agricultoresAsignados
-                5,  // diagnosticosPendientes
-                3   // alertasActivas
+                (int) agricultoresAsignados,
+                (int) diagnosticosPendientes,
+                (int) alertasActivas
         );
 
-        var pendientes = Arrays.asList(
-                new ExpertoDashboardResponse.DiagnosticoPendienteInfo(
-                        "diag-101",
-                        "Juan Pérez",
-                        "Finca La Esmeralda",
-                        "Moniliasis del Cacao",
-                        "ALTA",
-                        LocalDate.now().minusDays(1)
-                ),
-                new ExpertoDashboardResponse.DiagnosticoPendienteInfo(
-                        "diag-102",
-                        "Maria Rodríguez",
-                        "Finca El Recuerdo",
-                        "Escoba de Bruja",
-                        "MEDIA",
-                        LocalDate.now().minusDays(2)
-                ),
-                new ExpertoDashboardResponse.DiagnosticoPendienteInfo(
-                        "diag-103",
-                        "José Delgado",
-                        "Finca Villa Sandra",
-                        "Mazorca Negra (Phytophthora)",
-                        "ALTA",
-                        LocalDate.now().minusDays(3)
-                ),
-                new ExpertoDashboardResponse.DiagnosticoPendienteInfo(
-                        "diag-104",
-                        "Pedro Nel",
-                        "Finca Los Cacaos",
-                        "Moniliasis del Cacao",
-                        "MEDIA",
-                        LocalDate.now().minusDays(5)
-                )
-        );
+        // Consultar diagnósticos reales pendientes de revisión
+        List<com.cacaoscan.backend.model.Diagnostico> pendientesList = 
+                diagnosticoRepository.findTop10ByTieneEnfermedadTrueOrderByCreatedAtDesc();
+
+        List<ExpertoDashboardResponse.DiagnosticoPendienteInfo> pendientes = pendientesList.stream()
+                .map(d -> {
+                    String fincaName = d.getUsuario().getNombreFinca();
+                    if (fincaName == null || fincaName.isBlank()) {
+                        fincaName = "Finca de " + d.getUsuario().getNombre();
+                    }
+                    return new ExpertoDashboardResponse.DiagnosticoPendienteInfo(
+                            d.getId().toString(),
+                            d.getUsuario().getNombre(),
+                            fincaName,
+                            d.getNombreEnfermedad(),
+                            d.getSeveridad(),
+                            d.getCreatedAt().toLocalDate()
+                    );
+                })
+                .toList();
 
         var response = new ExpertoDashboardResponse(expertoInfo, kpis, pendientes);
         return ResponseEntity.ok(response);
+    }
+
+    private double parseConfianza(String confianza) {
+        if (confianza == null || confianza.isBlank()) {
+            return 0.0;
+        }
+        try {
+            String clean = confianza.replace("%", "").trim();
+            double val = Double.parseDouble(clean);
+            if (val > 1.0) {
+                return val / 100.0;
+            }
+            return val;
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 }

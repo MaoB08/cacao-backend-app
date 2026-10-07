@@ -11,7 +11,6 @@ public class RegisterRequest {
     @Size(max = 150, message = "El nombre no puede exceder los 150 caracteres")
     private String nombre;
 
-    @NotBlank(message = "El correo electrónico es requerido")
     @Email(message = "El formato del correo electrónico es inválido")
     @Size(max = 150, message = "El correo no puede exceder los 150 caracteres")
     private String email;

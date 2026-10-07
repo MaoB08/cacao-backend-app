@@ -48,7 +48,7 @@ public class DeteccionGeoreferenciadaService {
      */
     @Transactional
     public DeteccionResponse crearDeteccion(CrearDeteccionRequest request, String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         // Crear el punto geográfico
@@ -105,6 +105,14 @@ public class DeteccionGeoreferenciadaService {
         DeteccionGeoreferenciada deteccion = deteccionRepository.findById(deteccionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detección no encontrada"));
 
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        // Validar que la detección pertenezca al usuario autenticado
+        if (!deteccion.getUsuario().getId().equals(usuario.getId())) {
+            throw new IllegalArgumentException("No tienes permisos para ver esta detección");
+        }
+
         return toResponse(deteccion);
     }
 
@@ -113,7 +121,7 @@ public class DeteccionGeoreferenciadaService {
      */
     @Transactional(readOnly = true)
     public List<DeteccionMarkerResponse> obtenerTodasMapa(String userEmail) {
-        Usuario usuario = usuarioRepository.findByEmail(userEmail)
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         return deteccionRepository.findAllByUsuarioId(usuario.getId())
@@ -158,7 +166,9 @@ public class DeteccionGeoreferenciadaService {
     }
 
     private void validarAcceso(Lote lote, String userEmail) {
-        if (!lote.getFinca().getUsuario().getEmail().equals(userEmail)) {
+        Usuario usuario = usuarioRepository.findByIdentificador(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        if (!lote.getFinca().getUsuario().getId().equals(usuario.getId())) {
             throw new IllegalArgumentException("No tienes permisos sobre este lote");
         }
     }

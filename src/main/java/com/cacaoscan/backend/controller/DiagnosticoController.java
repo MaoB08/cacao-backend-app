@@ -26,7 +26,7 @@ public class DiagnosticoController {
     @PostMapping("/analizar")
     @Operation(summary = "Analizar Imagen con Red Neuronal", description = "Procesa la imagen de la mazorca y devuelve la clasificación de enfermedad, confianza, severidad y recomendaciones")
     public ResponseEntity<DiagnosticoResponse> analizarImagen(@RequestBody AnalisisRequest request, Principal principal) {
-        String userEmail = principal != null ? principal.getName() : "demo@cacaocare.com";
+        String userEmail = principal != null ? principal.getName() : "demo@cultivia.com";
         DiagnosticoResponse response = diagnosticoService.procesarAnalisisIA(request, userEmail);
         return ResponseEntity.ok(response);
     }
