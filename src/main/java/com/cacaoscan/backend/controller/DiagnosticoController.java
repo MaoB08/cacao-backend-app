@@ -5,8 +5,10 @@ import com.cacaoscan.backend.service.DiagnosticoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
@@ -23,11 +25,16 @@ public class DiagnosticoController {
         this.diagnosticoService = diagnosticoService;
     }
 
-    @PostMapping("/analizar")
-    @Operation(summary = "Analizar Imagen con Red Neuronal", description = "Procesa la imagen de la mazorca y devuelve la clasificación de enfermedad, confianza, severidad y recomendaciones")
-    public ResponseEntity<DiagnosticoResponse> analizarImagen(@RequestBody AnalisisRequest request, Principal principal) {
-        String userEmail = principal != null ? principal.getName() : "demo@cultivia.com";
-        DiagnosticoResponse response = diagnosticoService.procesarAnalisisIA(request, userEmail);
+    @PostMapping(value = "/analizar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Analizar Imagen con Red Neuronal",
+               description = "Recibe la fotografía de la mazorca como archivo multipart y la envía al modelo de clasificación")
+    public ResponseEntity<DiagnosticoResponse> analizarImagen(
+            @RequestParam("imagen") MultipartFile imagen,
+            Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autorizado");
+        }
+        DiagnosticoResponse response = diagnosticoService.procesarAnalisisIA(imagen, principal.getName());
         return ResponseEntity.ok(response);
     }
 

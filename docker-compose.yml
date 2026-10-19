@@ -10,6 +10,8 @@ services:
       - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cultivia-net
     restart: always
 
   redis:
@@ -17,6 +19,8 @@ services:
     container_name: cacaoscan-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - cultivia-net
     restart: always
 
   maildev:
@@ -25,7 +29,43 @@ services:
     ports:
       - "${MAILDEV_WEB_PORT:-1080}:1080" # Web UI
       - "${SMTP_PORT:-1025}:1025" # SMTP Port
+    networks:
+      - cultivia-net
     restart: always
+
+  ml-service:
+    build:
+      context: ../cacao-ml-service
+      dockerfile: Dockerfile
+    container_name: cacaoscan-ml-service
+    # NO exponer puerto al exterior — solo accesible dentro de la red Docker privada
+    # ports:
+    #   - "8000:8000"
+    environment:
+      ML_MODEL_PATH: /app/models/monilia/model.pt
+      ML_METADATA_PATH: /app/models/monilia/metadata.json
+      ML_ABSTENTION_THRESHOLD: ${ML_ABSTENTION_THRESHOLD:-0.65}
+      ML_LOG_LEVEL: ${ML_LOG_LEVEL:-info}
+    volumes:
+      # Montar modelos desde el host
+      - ../cacao-ml-service/models:/app/models:ro
+    networks:
+      - cultivia-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: always
+
+networks:
+  cultivia-net:
+    driver: bridge
 
 volumes:
   postgres-data:

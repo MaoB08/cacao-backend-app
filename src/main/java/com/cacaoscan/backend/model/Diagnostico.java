@@ -37,6 +37,18 @@ public class Diagnostico {
     @Column(name = "recomendaciones_json", columnDefinition = "TEXT")
     private String recomendacionesJson;
 
+    @Column(name = "codigo_clase", length = 30)
+    private String codigoClase;
+
+    @Column(name = "probabilidad")
+    private Double probabilidad;
+
+    @Column(name = "model_version", length = 80)
+    private String modelVersion;
+
+    @Column(name = "concluyente")
+    private Boolean concluyente = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -115,6 +127,38 @@ public class Diagnostico {
 
     public void setRecomendacionesJson(String recomendacionesJson) {
         this.recomendacionesJson = recomendacionesJson;
+    }
+
+    public String getCodigoClase() {
+        return codigoClase;
+    }
+
+    public void setCodigoClase(String codigoClase) {
+        this.codigoClase = codigoClase;
+    }
+
+    public Double getProbabilidad() {
+        return probabilidad;
+    }
+
+    public void setProbabilidad(Double probabilidad) {
+        this.probabilidad = probabilidad;
+    }
+
+    public String getModelVersion() {
+        return modelVersion;
+    }
+
+    public void setModelVersion(String modelVersion) {
+        this.modelVersion = modelVersion;
+    }
+
+    public Boolean isConcluyente() {
+        return concluyente;
+    }
+
+    public void setConcluyente(Boolean concluyente) {
+        this.concluyente = concluyente;
     }
 
     public LocalDateTime getCreatedAt() {

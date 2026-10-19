@@ -18,7 +18,7 @@ public interface DiagnosticoRepository extends JpaRepository<Diagnostico, UUID> 
     @Query("SELECT COUNT(d) FROM Diagnostico d WHERE d.usuario.id = :usuarioId")
     long countByUsuarioId(@Param("usuarioId") UUID usuarioId);
 
-    @Query("SELECT COUNT(d) FROM Diagnostico d WHERE d.usuario.id = :usuarioId AND d.tieneEnfermedad = true AND (d.severidad LIKE '%Alta%' OR d.severidad LIKE '%ALTA%')")
+    @Query("SELECT COUNT(d) FROM Diagnostico d WHERE d.usuario.id = :usuarioId AND d.tieneEnfermedad = true AND (d.codigoClase IN ('monilia_m2', 'monilia_m3') OR d.severidad LIKE '%Alta%' OR d.severidad LIKE '%ALTA%')")
     long countAlertasActivasByUsuarioId(@Param("usuarioId") UUID usuarioId);
 
     java.util.Optional<Diagnostico> findFirstByUsuarioOrderByCreatedAtDesc(Usuario usuario);
@@ -27,6 +27,6 @@ public interface DiagnosticoRepository extends JpaRepository<Diagnostico, UUID> 
 
     long countByTieneEnfermedadTrue();
 
-    @Query("SELECT COUNT(d) FROM Diagnostico d WHERE d.tieneEnfermedad = true AND (d.severidad LIKE '%Alta%' OR d.severidad LIKE '%ALTA%')")
+    @Query("SELECT COUNT(d) FROM Diagnostico d WHERE d.tieneEnfermedad = true AND (d.codigoClase IN ('monilia_m2', 'monilia_m3') OR d.severidad LIKE '%Alta%' OR d.severidad LIKE '%ALTA%')")
     long countAlertasTotales();
 }

@@ -22,6 +22,7 @@ public record ExpertoDashboardResponse(
         String finca,
         String enfermedadDetectada,
         String severidad,
-        LocalDate fecha
+        LocalDate fecha,
+        String imagenUrl
     ) {}
 }

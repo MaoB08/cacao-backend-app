@@ -20,7 +20,7 @@ Este repositorio contiene el backend del módulo síncrono de autenticación y r
 
 Asegúrate de tener instalados los siguientes componentes:
 * **Java 17 (JDK)**
-* **Maven** (o usa el wrapper `./mvnw` incluido)
+* **Maven**
 * **Docker y Docker Compose**
 
 ---
@@ -28,36 +28,38 @@ Asegúrate de tener instalados los siguientes componentes:
 ## 🚀 Guía de Configuración Local (Menos de 10 Minutos)
 
 ### 1. Iniciar Servicios Externos (Base de Datos, Redis, Maildev)
-Navega a la carpeta raíz y levanta la infraestructura local con Docker Compose:
+Desde `cacao-backend-app`, levanta la infraestructura con Docker Compose:
 
 ```bash
 docker compose up -d
 ```
 
 Esto levantará:
-* **PostgreSQL:** en `localhost:5432` (Credenciales: `cacaouser` / `cacaopassword`)
+* **PostgreSQL:** en `localhost:5433` (credenciales locales: `cacaouser` / `cacaopassword`)
 * **Redis:** en `localhost:6379`
 * **Maildev:** servidor SMTP en `localhost:1025` y consola web de correos en `http://localhost:1080`
 
 ### 2. Configurar Variables de Entorno
-Copia el archivo `.env.example` a un archivo `.env` en la raíz del proyecto y ajusta las variables si es necesario:
+Copia el archivo `.env.example` a `.env` en `cacao-backend-app` antes de ejecutar Docker Compose y ajusta las variables locales:
 
 ```bash
 cp .env.example .env
 ```
 
-*Nota: Spring Boot cargará automáticamente estas variables del sistema. Si ejecutas desde un IDE, asegúrate de configurar estas variables en el entorno de ejecución.*
+Docker Compose lee `.env` automáticamente para sustituir variables de su archivo Compose. Spring Boot ejecutado desde Maven o el IDE **no** carga ese archivo por sí solo: configura al menos `JWT_SECRET` en el entorno del proceso y genera una clave nueva de al menos 32 bytes para cada entorno. En PowerShell:
+
+```powershell
+$env:JWT_SECRET = '<clave aleatoria de al menos 32 bytes>'
+```
 
 ### 3. Compilar y Ejecutar la Aplicación
 Ejecuta las migraciones y levanta el servidor web:
 
 ```bash
 mvn spring-boot:run
-# O usando el wrapper de maven en Linux/macOS:
-./mvnw spring-boot:run
-# O en Windows:
-.\mvnw.cmd spring-boot:run
 ```
+
+El proyecto no incluye Maven Wrapper; usa Maven instalado.
 
 El backend estará disponible en: `http://localhost:8080`
 
